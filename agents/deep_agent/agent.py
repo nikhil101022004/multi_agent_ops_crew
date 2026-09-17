@@ -18,15 +18,13 @@ from datetime import datetime
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, FilesystemBackend, StoreBackend
 from langchain_core.tools import tool
-from tavily import TavilyClient
-
+from duckduckgo_search import DDGS
 from utils.models import model
 
 AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- Tools ---
 
-tavily_client = TavilyClient()
 
 
 @tool(parse_docstring=True)
@@ -36,17 +34,27 @@ def tavily_search(query: str) -> str:
     Args:
         query: Search query to execute
     """
-    search_results = tavily_client.search(query, max_results=3, topic="general")
+    results = DDGS().text(query, max_results=3)
 
     result_texts = []
-    for result in search_results.get("results", []):
-        url = result["url"]
-        title = result["title"]
-        content = result.get("content", "No content available")
-        result_text = f"## {title}\n**URL:** {url}\n\n{content}\n\n---\n"
+
+    for result in results:
+        title = result.get("title", "No title")
+        url = result.get("href", "")
+        content = result.get("body", "No content available")
+
+        result_text = (
+            f"## {title}\n"
+            f"**URL:** {url}\n\n"
+            f"{content}\n\n"
+            f"---\n"
+        )
         result_texts.append(result_text)
 
-    return f"Found {len(result_texts)} result(s) for '{query}':\n\n{''.join(result_texts)}"
+    return (
+        f"Found {len(result_texts)} result(s) for '{query}':\n\n"
+        f"{''.join(result_texts)}"
+    )
 
 # --- Research Subagent ---
 
